@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+pydantic
+openai
+openai-agents
+python-dotenv
+pytest
+sqlalchemy>=2.0
+alembic
+psycopg[binary]
