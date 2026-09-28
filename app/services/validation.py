@@ -1,3 +1,7 @@
+from pydantic import ValidationError
+from sqlalchemy.exc import SQLAlchemyError
+
+from ..db.session import DatabaseConfigurationError
 from ..schemas import (
     EmailAnalysisRequest,
     EmailExtraction,
@@ -6,7 +10,7 @@ from ..schemas import (
 from .database import get_customer_record, get_order_record
 
 
-def validate_extraction(
+def _validate_extraction(
     request: EmailAnalysisRequest,
     extraction: EmailExtraction,
 ) -> ValidationResult:
@@ -89,4 +93,23 @@ def validate_extraction(
         expected_delivery=order["expected_delivery"],
         tracking_id=order["tracking_id"],
         verified_product_name=order["product_name"],
+    )
+
+
+def validate_extraction(
+    request: EmailAnalysisRequest,
+    extraction: EmailExtraction,
+) -> ValidationResult:
+    try:
+        return _validate_extraction(request, extraction)
+    except (SQLAlchemyError, DatabaseConfigurationError):
+        # Never include SQL, connection strings, or partially verified facts.
+        error = "Business records are temporarily unavailable"
+    except ValidationError:
+        error = "Business record is inconsistent"
+    return ValidationResult(
+        customer_id=request.customer_id,
+        customer_found=False,
+        order_id=extraction.order_id,
+        validation_errors=[error],
     )

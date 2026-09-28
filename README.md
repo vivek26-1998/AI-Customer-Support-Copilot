@@ -12,7 +12,10 @@ python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install -r requirements.txt
 Copy-Item .env.example .env
-# Set OPENAI_API_KEY in .env for live extraction and decision calls.
+# Set DATABASE_URL to your PostgreSQL database and OPENAI_API_KEY for live calls.
+# Create the database/user first; Alembic creates tables, not databases.
+python -m alembic upgrade head
+python -m app.db.seed
 python -m uvicorn app.main:app --reload
 ```
 
@@ -24,13 +27,35 @@ it does not send email or execute business actions.
 python -m pytest -q
 ```
 
-Tests disable dotenv loading and use mocked model calls; no API key or database
-is required. Production lookups still use demonstration mock data. PostgreSQL
-models and an Alembic migration are scaffolding for the next phase.
+The default tests use isolated in-memory SQLite with foreign keys enabled and
+mocked model calls. No API key or running database is required.
+
+To also run the suite against PostgreSQL, set `TEST_DATABASE_URL` in `.env` (or
+the environment) to a separate test database whose user can create schemas:
+
+```powershell
+python -m pytest -q --postgres
+```
+
+This explicitly requested test run reads only the database settings from `.env`;
+it never loads an API key. It creates a random schema, exercises the existing
+Alembic migration in both directions, runs the tests, then removes only that
+schema. Each test's data changes are rolled back. The suite also checks that the
+migration matches the ORM models.
+
+Application lookups use SQLAlchemy repositories returning typed Pydantic records.
+Read sessions close after each lookup; agents receive only validation-approved
+facts. Missing configuration, database failures and malformed records route to
+human review, with no mock fallback or connection details in the response.
+
+The seed command is an explicit local administration step. It inserts missing
+demo customers/orders in one transaction and preserves existing rows. It does
+not run at startup and is not an agent-callable write tool. `app/mock_data.py`
+now supplies demo seed values only.
 
 ## Status and limitations
 
-Phases 1-3 are complete; Phase 4 (PostgreSQL repositories) is next. See
+Phases 1-4 are complete; Phase 5 (focused, typed agent tools) is next. See
 [the roadmap](docs/ROADMAP.md) and [the change log](CHANGELOG.md).
 
 The API currently trusts the supplied customer ID. Authentication and binding

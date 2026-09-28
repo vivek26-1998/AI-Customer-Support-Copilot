@@ -1,5 +1,32 @@
 # Change Log
 
+## 2026-09-28 - Complete Phase 4 PostgreSQL foundation
+
+- Confirmed that the existing initial Alembic migration was already applied to
+  the main database at revision `bdc21f12c6a7`; reused it without rewriting it.
+- Added an internal repository protocol and SQLAlchemy customer/order reads
+  returning immutable Pydantic records, separate from ORM models.
+- Replaced runtime mock lookups with repository-backed database lookups while
+  preserving the validation contract and request-scoped agent tools.
+- Made session setup lazy, with short-lived read sessions and no database
+  configuration required merely to import the application.
+- Added explicit insert-only demo seeding in a caller-controlled transaction;
+  repeated runs preserve existing data. Ran the seed command locally.
+- Added fail-closed validation results for database/configuration failures and
+  malformed database records; partial facts and connection details are withheld.
+- Extended Alembic's environment to accept an injected test connection.
+- Added isolated SQLite and PostgreSQL test fixtures, foreign-key enforcement,
+  transaction rollback, repeatable seeding, null/date serialization, database
+  changes reflected in validation, constraint and API failure coverage.
+- Exercised PostgreSQL migration upgrade/downgrade/upgrade in a temporary test
+  schema and checked migration/model parity. The main schema was not altered.
+- Updated README, roadmap and project instructions: Phase 5 is next.
+
+Verification: `python -m pytest -q --postgres` - 72 passed across SQLite and
+PostgreSQL, with no model calls or API credentials. `python -m alembic current`
+confirmed the main database is still at the existing migration head.
+
+
 ## 2026-09-28 - Complete Phase 3 workflow integration
 
 ### Existing workspace baseline

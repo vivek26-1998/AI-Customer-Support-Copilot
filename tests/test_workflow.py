@@ -102,3 +102,18 @@ def test_missing_tool_arguments_return_no_business_facts():
     result = invoke(agent_service.get_order, facts, order_id='77881')
     assert 'DHL-' not in str(result)
     assert 'Lenovo' not in str(result)
+
+
+def test_api_database_failure_routes_to_review(monkeypatch):
+    from sqlalchemy.exc import OperationalError
+    monkeypatch.setattr(workflow, 'extract_email_details', lambda _: make_extraction('77881'))
+    def unavailable(_):
+        raise OperationalError('private SQL', {}, Exception('private database password'))
+    monkeypatch.setattr('app.services.validation.get_order_record', unavailable)
+    monkeypatch.setattr(workflow, 'analyze_email_with_agent', lambda **_: pytest.fail('Agent called'))
+    response = TestClient(app).post('/emails/analyze', json=make_request().model_dump())
+    assert response.status_code == 200
+    assert response.json()['requires_human_review'] is True
+    assert response.json()['order_id'] is None
+    assert 'private' not in response.text
+    assert 'DHL-' not in response.text

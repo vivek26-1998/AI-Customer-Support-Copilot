@@ -60,8 +60,8 @@ Read `docs/ROADMAP.md` before changing code and identify the first unfinished
 step. Do not begin a later phase unless the current phase is complete or the
 user explicitly changes priority.
 
-Phases 1-3 are complete. The immediate task is completing Phase 4: repositories,
-seed data, database tests, and database-backed lookups. See docs/ROADMAP.md.
+Phases 1-4 are complete. The immediate task is Phase 5: focused customer/order
+tool modules with typed results and independent tests. See docs/ROADMAP.md.
 
 ## Testing and Safety
 

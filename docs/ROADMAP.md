@@ -5,8 +5,9 @@
 - Phases 1 and 2: implemented; deterministic validation tests pass.
 - Phase 3: completed with fail-closed validation routing, request-scoped read
   tools, and workflow/API security regression tests.
-- Phase 4: started previously (models, session setup, migration); incomplete.
-  Next: repositories, seed data, database tests, and replacing mock lookups.
+- Phase 4: complete. Existing Alembic migration verified; typed repositories,
+  insert-only demo seeding, database-backed lookups, and SQLite/PostgreSQL tests
+  preserve validation behavior. No runtime mock-data fallback remains.
 - Phases 5-13: pending; the combined decision/drafting agent remains the MVP.
 
 ## Goal
@@ -177,6 +178,7 @@ the working system.
 
 ## Immediate Next Step
 
-Complete Phase 4 using the existing PostgreSQL scaffolding. Add repository
-abstractions, seed data and database tests, then replace mock lookups while
-preserving validation and ownership behavior. Do not start Phase 5 yet.
+Begin Phase 5: move the existing request-scoped customer and order tools out of
+`agent_service.py` into focused modules with typed results and independent tests.
+Preserve the validation context and ownership restrictions. Add further domain
+tools only when their corresponding use cases are implemented.
