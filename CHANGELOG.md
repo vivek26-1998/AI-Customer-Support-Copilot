@@ -1,5 +1,25 @@
 # Change Log
 
+## 2026-10-18 - Complete revised Phase 5 repository-backed tools
+
+- Replaced snapshot-returning tools with focused customer and order modules.
+- Added frozen application-controlled customer scope and private per-run evidence.
+  Customer identity is not part of model-selected tool arguments.
+- Added a customer-scoped order query plus deterministic ownership verification.
+  Unknown and unauthorized orders have indistinguishable outward results.
+- Added strict Pydantic success/failure contracts serialized to JSON for tools.
+  Database and record errors return sanitized failures without partial facts.
+- Removed eager validation from the live workflow. Tools now retrieve facts when
+  selected by the agent; the legacy validator remains for regression coverage.
+- Added a deterministic evidence-completeness guard. Skipped lookups, failed
+  tools and mismatched response order IDs produce a fixed human-review reply.
+- Added independent tool tests and simulated agent-call workflow/API regressions.
+- Updated roadmap and README. Phase 6 is next; full business policy and grounded
+  drafting are still pending. No authentication or write tools were added.
+
+Verification: `python -m pytest -q --postgres` passed 96 tests across SQLite and
+PostgreSQL without model calls. PostgreSQL tests use an isolated temporary schema.
+
 ## 2026-09-28 - Complete Phase 4 PostgreSQL foundation
 
 - Confirmed that the existing initial Alembic migration was already applied to

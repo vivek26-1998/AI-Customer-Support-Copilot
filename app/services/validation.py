@@ -8,6 +8,12 @@ from ..schemas import (
     ValidationResult,
 )
 from .database import get_customer_record, get_order_record
+from ..db.schemas import OrderRecord
+
+
+def order_is_owned_by(order: OrderRecord, customer_id: str) -> bool:
+    """Defense in depth after a customer-scoped repository query."""
+    return order.customer_id == customer_id
 
 
 def _validate_extraction(
@@ -100,6 +106,7 @@ def validate_extraction(
     request: EmailAnalysisRequest,
     extraction: EmailExtraction,
 ) -> ValidationResult:
+    """Legacy eager validator retained for regression tests; tools drive live reads."""
     try:
         return _validate_extraction(request, extraction)
     except (SQLAlchemyError, DatabaseConfigurationError):

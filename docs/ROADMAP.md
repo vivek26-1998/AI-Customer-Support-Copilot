@@ -1,6 +1,6 @@
 # AI Customer Support Copilot Roadmap
 
-## Current Status (2026-09-28)
+## Current Status (2026-10-18)
 
 - Phases 1 and 2: implemented; deterministic validation tests pass.
 - Phase 3: completed with fail-closed validation routing, request-scoped read
@@ -8,7 +8,10 @@
 - Phase 4: complete. Existing Alembic migration verified; typed repositories,
   insert-only demo seeding, database-backed lookups, and SQLite/PostgreSQL tests
   preserve validation behavior. No runtime mock-data fallback remains.
-- Phases 5-13: pending; the combined decision/drafting agent remains the MVP.
+- Phase 5: complete. Repository-backed tools enforce customer scope, return typed
+  results and record per-run evidence. The workflow fails closed on missing
+  evidence or failed tool calls. SQLite and PostgreSQL regression tests pass.
+- Phases 6-13: pending; the combined decision/drafting agent remains the MVP.
 
 ## Goal
 
@@ -22,8 +25,9 @@ review.
 ```text
 Customer email
   -> Extraction agent
-  -> Validation service
-  -> Decision and tool-calling agent
+  -> Application-controlled customer scope
+  -> Decision agent selects read tools
+  -> Tools query repositories and deterministically verify access and facts
   -> Deterministic policy engine
   -> Grounded drafting agent
   -> Human review or approved response
@@ -35,7 +39,8 @@ Customer email
 | Component | Responsibility |
 | --- | --- |
 | Extraction agent | Understand and structure the email |
-| Validation service | Verify business facts and ownership |
+| Request context | Carry application-controlled customer scope; never model-selected identity |
+| Read tools and validation code | Retrieve through repositories and verify business facts and ownership |
 | Decision agent | Select tools and propose an action |
 | Policy engine | Approve, change, or reject the proposed action |
 | Drafting agent | Write from approved, verified facts |
@@ -85,21 +90,65 @@ transactions, repositories, and testable persistence.
 Done when: database-backed repositories replace mock lookups while preserving
 validation behavior.
 
-## Phase 5: Agent Tool Layer
+## Phase 5: Repository-Backed Agent Tools
 
-Move tools out of `agent_service.py`. Begin with customer and order tools, then
-add inventory, invoice, RMA eligibility, and knowledge-base tools as those use
-cases are implemented. Use typed, minimal, safe tool results.
+Build focused customer and order tools outside `agent_service.py` that retrieve
+business facts through repositories instead of returning facts already supplied
+in the agent prompt.
 
-Why: category-specific capabilities create meaningful agent tool selection.
+Responsibilities:
+- Application code establishes the customer scope for the request and passes
+  it through runtime context.
+- The decision agent selects tools and supplies lookup arguments, such as
+  an order ID.
+- `get_customer` retrieves the current customer's profile using the customer
+  identity from context.
+- `get_order` retrieves an order through a customer-scoped repository query.
+  The model cannot choose or override the customer identity.
+- Deterministic Python enforces access before any business facts are returned.
+- Tools return minimal, typed Pydantic results for successful lookups,
+  unavailable records, invalid arguments, and operational failures.
+- Unknown and unauthorized orders produce the same outward-facing result,
+  avoiding disclosure of another customer's order existence.
 
-Done when: every tool has tests, error handling, and controlled output fields.
+Workflow changes:
+- Keep email extraction.
+- Replace eager order retrieval before the decision agent with request-scope
+  preparation. Extracted IDs remain unverified lookup inputs.
+- Do not preload order details into the decision agent's prompt.
+- Let tools retrieve and verify facts when called.
+- Preserve safe human-review handling when verification cannot be completed.
+
+Boundaries:
+- Access PostgreSQL only through repositories.
+- A supplied customer ID is not authentication. Bind customer scope to an
+  authenticated caller before public deployment.
+- Keep these tools read-only. Business-action authorization belongs to the
+  deterministic policy engine.
+- Structured action proposals remain Phase 6 work.
+- Add inventory, invoice, RMA, and knowledge-base tools only when their
+  corresponding use cases are implemented.
+
+Tests:
+- Test every tool independently without an LLM or API key.
+- Cover successful retrieval, missing records, invalid inputs, database
+  failures, and cross-customer access.
+- Verify that model arguments cannot override customer scope.
+- Verify that returned facts reflect database records.
+- Test workflow integration using simulated agent tool calls.
+
+Why: tool selection should retrieve needed business facts, while deterministic
+code retains control of validation and authorization.
+
+Done when: the agent can obtain customer/order facts through meaningful
+repository-backed tool calls, access checks cannot be bypassed, and the workflow
+remains working.
 
 ## Phase 6: Decision Agent
 
-Refactor the decision agent to receive extraction and validation context,
-select relevant tools, and produce a structured `AgentProposal`. It proposes
-actions but does not authorize them or verify ownership.
+Refactor the decision agent to receive extraction and request context, select
+relevant tools, and produce a structured `AgentProposal` grounded in verified
+tool results. It proposes actions but does not authorize them or verify ownership.
 
 Why: flexible reasoning belongs to the agent; final authority does not.
 
@@ -178,7 +227,7 @@ the working system.
 
 ## Immediate Next Step
 
-Begin Phase 5: move the existing request-scoped customer and order tools out of
-`agent_service.py` into focused modules with typed results and independent tests.
-Preserve the validation context and ownership restrictions. Add further domain
-tools only when their corresponding use cases are implemented.
+Begin Phase 6: replace the combined decision/draft output with a structured
+`AgentProposal` grounded in tool-recorded evidence. Preserve application-controlled
+customer scope, deterministic ownership checks and the missing-evidence guard.
+Business-action authorization remains Phase 7 work.

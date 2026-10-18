@@ -1,6 +1,7 @@
 """Internal reads for validation; callers must verify ownership before disclosure."""
 from typing import Protocol
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .models import Customer, Order
@@ -10,6 +11,7 @@ from .schemas import CustomerRecord, OrderRecord
 class SupportRepository(Protocol):
     def get_customer(self, customer_id: str) -> CustomerRecord | None: ...
     def get_order(self, order_id: str) -> OrderRecord | None: ...
+    def get_order_for_customer(self, order_id: str, customer_id: str) -> OrderRecord | None: ...
 
 
 class SqlAlchemySupportRepository:
@@ -22,4 +24,10 @@ class SqlAlchemySupportRepository:
 
     def get_order(self, order_id: str) -> OrderRecord | None:
         record = self.session.get(Order, order_id)
+        return OrderRecord.model_validate(record) if record is not None else None
+
+    def get_order_for_customer(self, order_id: str, customer_id: str) -> OrderRecord | None:
+        record = self.session.scalar(select(Order).where(
+            Order.id == order_id, Order.customer_id == customer_id,
+        ))
         return OrderRecord.model_validate(record) if record is not None else None
